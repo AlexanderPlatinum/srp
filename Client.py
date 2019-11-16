@@ -4,7 +4,7 @@ import User
 import Utilities
 import Constants
 
-BUFFER_SIZE = 32
+BUFFER_SIZE = 128
 HOST = 'localhost'
 PORT = 7777
 
@@ -35,12 +35,14 @@ class Client(object):
         a = Utilities.make_rand()
         A = pow(Constants.G, a, Constants.N)
 
-        self.__socket.send("LOGIN".encode())
-        self.__socket.send(login.encode())
-        self.__socket.send(str(A).encode())
+        sended_data = 'LOGIN' + ' ' + login + ' ' + str(A)
+        self.__socket.send(sended_data.encode())
 
-        B = int(self.__socket.recv(BUFFER_SIZE).decode().replace(' ', ''))
-        salt = int(self.__socket.recv(BUFFER_SIZE).decode().replace(' ', ''))
+        recived_data = self.__socket.recv(BUFFER_SIZE).decode().split(' ')
+        B = int(recived_data[0])
+        salt = int(recived_data[1])
+
+        print(recived_data)
 
         u = Utilities.make_hash(Utilities.format2(A, B))
         x = Utilities.make_hash(Utilities.format2(salt, password))
@@ -55,7 +57,7 @@ class Client(object):
         client_M = Utilities.make_hash(Utilities.format6(hash_N ^ hash_G, hash_I, salt, A, B, client_K))
         self.__socket.send(str(client_M).encode())
 
-        R_server = int(self.__socket.recv(BUFFER_SIZE).decode().replace(' ', ''))
+        R_server = int(self.__socket.recv(BUFFER_SIZE).decode())
         R_client = Utilities.make_hash(Utilities.format3(A, client_M, client_K))
 
         if R_client == R_server:
@@ -79,16 +81,9 @@ class Client(object):
         self.__send_register_data(user)
 
     def __send_register_data(self, user: User):
-        self.__send_str('REGISTER')
-        self.__send_str(user.login)
-        self.__send_str(user.salt)
-        self.__send_str(user.verifier)
+        send_data = 'REGISTER' + ' ' + user.login + ' ' + user.salt + ' ' + user.verifier
+        self.__socket.send(send_data.encode())
 
-    def __send_str(self, to_send: str):
-        str_len = len(to_send)
-        need = BUFFER_SIZE - str_len + 1
-        temp = to_send.ljust(need, ' ')
-        self.__socket.send(bytes(temp, 'ascii'))
 
 
 def main():
